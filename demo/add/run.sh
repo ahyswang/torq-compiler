@@ -4,7 +4,11 @@ export PATH=/workspace/yswang26/mlir/iree-build/third_party/iree/tools/:$PATH
 
 mkdir -p ./data.ignore
 
-torq-compile ../../tests/testdata/tosa_ops/add-bf16.mlir  -o ./data.ignore/output.vmfb  --mlir-print-ir-after-all --dump-compilation-phases-to=data.ignore > ./data.ignore/log.txt 2>&1 
+torq-compile ./add-bf16.mlir  -o ./data.ignore/output.vmfb  --mlir-print-ir-after-all --dump-compilation-phases-to=data.ignore > ./data.ignore/log.txt 2>&1 
+
+iree-run-module --device=torq --module=./data.ignore/output.vmfb --function=main --input="4xbf16=1.0" --input="4xbf16=10.0"
+
+#torq-compile ../../tests/testdata/linalg_ops/batch-n-matmul-in-int8-out-int16.mlir  -o ./data.ignore/output.vmfb  --mlir-print-ir-after-all --dump-compilation-phases-to=data.ignore > ./data.ignore/log.txt 2>&1 
 
 exit 0
 
