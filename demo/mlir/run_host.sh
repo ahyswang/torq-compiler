@@ -5,7 +5,7 @@ export PATH=/workspace/yswang26/mlir/iree-build/third_party/iree/tools/:$PATH
 mkdir -p ./data.ignore
 
 torq-compile ./add-bf16_css.mlir  -o ./data.ignore/output.vmfb  \
-    --mlir-print-ir-after-all --dump-compilation-phases-to=data.ignore --torq-disable-slices \
+    --mlir-print-ir-after-all --dump-compilation-phases-to=data.ignore --torq-disable-slices --torq-disable-css \
     > ./data.ignore/log.txt 2>&1 
 
 # iree-opt --torq-tosa-transformation-pipeline \
