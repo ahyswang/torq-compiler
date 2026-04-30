@@ -24,7 +24,9 @@ def TosaToTorqHLConversion :
 
     let dependentDialects = [
         "syna::torq_hl::TorqHLDialect",
-        "::mlir::linalg::LinalgDialect"
+        "::mlir::linalg::LinalgDialect",
+        "memref::MemRefDialect",
+        "bufferization::BufferizationDialect",
     ];
 }
 

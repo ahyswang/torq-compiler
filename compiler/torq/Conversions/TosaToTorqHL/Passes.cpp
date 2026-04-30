@@ -37,7 +37,7 @@ class TosaToTorqHLConversionPass : public TosaToTorqHLConversionBase<TosaToTorqH
         // types of operations
         conversionTarget.addLegalDialect<
             torq_hl::TorqHLDialect, func::FuncDialect, tensor::TensorDialect, arith::ArithDialect,
-            linalg::LinalgDialect>();
+            linalg::LinalgDialect, memref::MemRefDialect, bufferization::BufferizationDialect>();
 
         RewritePatternSet patterns(&getContext());
         populateTOSAToTorqHLPatterns(context, patterns);

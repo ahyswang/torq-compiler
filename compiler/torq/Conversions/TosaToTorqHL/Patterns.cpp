@@ -25,6 +25,18 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 
+#include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/PatternMatch.h"
+
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Bufferization/IR/Bufferization.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/Dialect/Tosa/IR/TosaOps.h"
+#include "mlir/IR/PatternMatch.h"
+
+using namespace mlir;
+
 #include <numeric>
 #include <type_traits>
 
@@ -908,6 +920,87 @@ struct ResizeNearestNeighborOpConversion : public OpConversionPattern<tosa::Resi
     }
 };
 
+
+static constexpr StringRef kLibAddSym = "lib_add";
+
+struct TosaAddToLibCallOpConversion : public OpConversionPattern<tosa::AddOp> {
+    TosaAddToLibCallOpConversion(MLIRContext *context) : OpConversionPattern(context) {}
+
+    LogicalResult matchAndRewrite(
+        tosa::AddOp srcOp, OpAdaptor adaptor, ConversionPatternRewriter &rewriter
+    ) const override {
+        // auto scale = adaptor.getScale();
+        // auto mode = adaptor.getMode();
+        // if (mode != "NEAREST_NEIGHBOR") {
+        //     return srcOp.emitError("Current support only for NEAREST_NEIGHBOR with scale 2");
+        // }
+        // auto output = rewriter.create<syna::torq_hl::ResizeNearestNeighborOp>(
+        //     srcOp.getLoc(), convertTypeNHWCtoNCHW(srcOp.getResult().getType()),
+        //     createInitTensorNCHW(srcOp, rewriter), scale[0],
+        //     convertNHWCtoNCHW(srcOp.getInput(), srcOp.getLoc(), rewriter)
+        // );
+        // auto transposeOp = convertNCHWtoNHWC(output.getOutput(), srcOp.getLoc(), rewriter);
+        // rewriter.replaceOp(srcOp, transposeOp);
+        // return success();
+
+        #if 1
+        Location loc = srcOp.getLoc();
+        Value lhs = srcOp.getInput1();
+        Value rhs = srcOp.getInput2();
+
+        auto lhsType = dyn_cast<RankedTensorType>(lhs.getType());  
+        auto rhsType = dyn_cast<RankedTensorType>(rhs.getType());
+        if (!lhsType || !rhsType || (lhsType != rhsType)) {
+            return rewriter.notifyMatchFailure(
+                srcOp, "Input1 and Input2 must have the same type for Add operation"
+            );
+        }
+
+        // convert tensor to memref
+        auto memType = MemRefType::get(
+            lhsType.getShape(), lhsType.getElementType()
+        );
+        Value hlsM = rewriter.create<bufferization::ToMemrefOp>(loc, memType, lhs);
+        Value hrsM = rewriter.create<bufferization::ToMemrefOp>(loc, memType, rhs);
+
+        // allocate memref for result
+        Value resultM = rewriter.create<memref::AllocOp>(loc, memType);
+        int64_t size = lhsType.getNumElements();
+        Value sizeC = rewriter.create<arith::ConstantOp>(
+            loc, rewriter.getI64IntegerAttr(size)
+        );
+
+        // extract base ptr from memref
+        auto lMeta = rewriter.create<memref::ExtractStridedMetadataOp>(loc, hlsM);
+        auto rMeta = rewriter.create<memref::ExtractStridedMetadataOp>(loc, hrsM);
+        auto oMeta = rewriter.create<memref::ExtractStridedMetadataOp>(loc, resultM);
+        Value lPtr = lMeta.getBaseBuffer();
+        Value rPtr = rMeta.getBaseBuffer();
+        Value oPtr = oMeta.getBaseBuffer();
+
+        // declare lib add function if not exists
+        auto funcType = rewriter.getFunctionType(
+            {lPtr.getType(), rPtr.getType(), oPtr.getType(), rewriter.getI64Type()}, {});
+        ModuleOp module = srcOp->getParentOfType<ModuleOp>();
+        if (!module.lookupSymbol<func::FuncOp>(kLibAddSym)) {
+          OpBuilder::InsertionGuard g(rewriter);
+          rewriter.setInsertionPointToStart(module.getBody());
+          auto fn = rewriter.create<func::FuncOp>(loc, kLibAddSym, funcType);
+          fn.setPrivate();
+        }
+        // create call to lib add   
+        rewriter.create<func::CallOp>(
+            loc, kLibAddSym, TypeRange(), ValueRange{lPtr, rPtr, oPtr, sizeC}
+        );
+        
+        // convert memref to tensor, replace tosa.add
+        Value result = rewriter.create<bufferization::ToTensorOp>(loc, lhsType, resultM);
+        rewriter.replaceOp(srcOp, result);
+        #endif 
+        return success();
+    }
+};
+
 } // namespace
 
 void populateTOSAToTorqHLPatterns(MLIRContext *context, RewritePatternSet &patterns) {
@@ -919,6 +1012,8 @@ void populateTOSAToTorqHLPatterns(MLIRContext *context, RewritePatternSet &patte
     patterns.insert<ArgMaxOpConversion>(context);
     patterns.insert<ScatterOpConversion>(context);
     patterns.insert<ResizeNearestNeighborOpConversion>(context);
+
+    //patterns.insert<TosaAddToLibCallOpConversion>(context);
 }
 
 } // namespace mlir::syna::torq
