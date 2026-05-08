@@ -1,8 +1,18 @@
 include(ExternalProject)
 
+set(AWS_FPGA_LOCAL_TAR "${CMAKE_SOURCE_DIR}/third_party/aws-fpga-v2.2.2.tar.gz")
+
+if(EXISTS ${AWS_FPGA_LOCAL_TAR})
+    message(STATUS "Found local AWS FPGA archive: ${AWS_FPGA_LOCAL_TAR}")
+    set(AWS_FPGA_URL ${AWS_FPGA_LOCAL_TAR})
+else()
+    message(STATUS "Local AWS FPGA archive not found, will download from GitHub.")
+    set(AWS_FPGA_URL "https://github.com/aws/aws-fpga/archive/refs/tags/v2.2.2.tar.gz")
+endif()
+
 ExternalProject_Add(
     aws_fpga_mgmt_proj
-    URL https://github.com/aws/aws-fpga/archive/refs/tags/v2.2.2.tar.gz
+    URL ${AWS_FPGA_URL}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND cd <SOURCE_DIR>/sdk/userspace && ./mkall_fpga_mgmt_tools.sh
     
