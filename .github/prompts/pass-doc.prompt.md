@@ -7,7 +7,7 @@ tools: ['search', 'editFiles']
 # 任务
 
 为 Pass `${input:passName:CompileTimeConstCompute}` 生成一份标准化的中文技术文档，
-输出路径固定为：`doc/dev-manual/${input:passSnake:compile_time_const_compute_pass}.md`。
+输出路径固定为：`demo/doc/${input:passSnake:compile_time_const_compute_pass}.md`。
 
 若目标文件已存在，则**覆盖重写**；不要修改任何源码文件。
 
