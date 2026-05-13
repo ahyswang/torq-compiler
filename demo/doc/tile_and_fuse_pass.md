@@ -73,7 +73,7 @@ void TileAndFusePass::runOnOperation() {
 }
 ```
 
-- `orderTiOps` + `forwardDfs` 是在“从 producer 指向 user(consumer)”这张图上做后序遍历，因此结果顺序表现为“consumer 先于 producer”。
+- `orderTiOps` + `forwardDfs` 会沿 `result -> user` 方向做 DFS，并在回溯阶段把 op 追加到 `orderTi`；该顺序是当前实现用于避免重复处理的执行顺序，不等同于经典 dataflow 拓扑序。
 - 这样当 producer 已在更下游 consumer 的 tiling loop 中被融合后，可通过 `torq-tiling-fused` 跳过重复处理。
 
 ### 核心重写：tileAndFuseToSize + SCF tile-and-fuse
@@ -183,6 +183,7 @@ module {
 %tiled = scf.forall (%i) in (%c4) shared_outs(%out = %init) -> (tensor<256x1024xi8>) {
   %lhs = tensor.extract_slice %arg0[%i, 0] [64, 1024] [1, 1] : tensor<256x1024xi8> to tensor<64x1024xi8>
   %rhs = tensor.extract_slice %arg1[%i, 0] [64, 1024] [1, 1] : tensor<256x1024xi8> to tensor<64x1024xi8>
+  %tile = tensor.extract_slice %out[%i, 0] [64, 1024] [1, 1] : tensor<256x1024xi8> to tensor<64x1024xi8>
   %sum = linalg.add ins(%lhs, %rhs : tensor<64x1024xi8>, tensor<64x1024xi8>) outs(%tile : tensor<64x1024xi8>)
   tensor.parallel_insert_slice %sum into %out[%i, 0] [64, 1024] [1, 1] : tensor<64x1024xi8> into tensor<256x1024xi8>
 }
