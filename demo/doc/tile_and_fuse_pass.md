@@ -180,11 +180,12 @@ module {
 
 ```mlir
 %init = tensor.empty() : tensor<256x1024xi8>
+%c4 = arith.constant 4 : index
 %tiled = scf.forall (%i) in (%c4) shared_outs(%out = %init) -> (tensor<256x1024xi8>) {
   %lhs = tensor.extract_slice %arg0[%i, 0] [64, 1024] [1, 1] : tensor<256x1024xi8> to tensor<64x1024xi8>
   %rhs = tensor.extract_slice %arg1[%i, 0] [64, 1024] [1, 1] : tensor<256x1024xi8> to tensor<64x1024xi8>
   %tile = tensor.extract_slice %out[%i, 0] [64, 1024] [1, 1] : tensor<256x1024xi8> to tensor<64x1024xi8>
-  %sum = linalg.add ins(%lhs, %rhs : tensor<64x1024xi8>, tensor<64x1024xi8>) outs(%tile : tensor<64x1024xi8>)
+  %sum = linalg.add ins(%lhs, %rhs : tensor<64x1024xi8>, tensor<64x1024xi8>) outs(%tile : tensor<64x1024xi8>) -> tensor<64x1024xi8>
   tensor.parallel_insert_slice %sum into %out[%i, 0] [64, 1024] [1, 1] : tensor<64x1024xi8> into tensor<256x1024xi8>
 }
 ```
