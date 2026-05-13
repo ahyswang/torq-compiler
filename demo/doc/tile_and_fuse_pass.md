@@ -73,7 +73,7 @@ void TileAndFusePass::runOnOperation() {
 }
 ```
 
-- `orderTiOps` + `forwardDfs` 保证按“consumer 先于 producer”的后序顺序处理。
+- `orderTiOps` + `forwardDfs` 是在“从 producer 指向 user(consumer)”这张图上做后序遍历，因此结果顺序表现为“consumer 先于 producer”。
 - 这样当 producer 已在更下游 consumer 的 tiling loop 中被融合后，可通过 `torq-tiling-fused` 跳过重复处理。
 
 ### 核心重写：tileAndFuseToSize + SCF tile-and-fuse
@@ -222,7 +222,7 @@ torq-compile ./add-int8_linalg_tiling.mlir -o ./data.ignore/output.vmfb \
 - [TORQLowerExecutableTargetPass.cpp](../../compiler/torq/Codegen/TORQLowerExecutableTargetPass.cpp#L71-L132)
 - [PatternUtils.h](../../compiler/torq/Conversions/LinalgToTorqHL/PatternUtils.h#L19-L155)
 - [PatternUtils.cpp](../../compiler/torq/Conversions/LinalgToTorqHL/PatternUtils.cpp#L47-L313)
-- [Passes.cpp](../../compiler/torq/Conversions/LinalgToTorqHL/Passes.cpp#L149-L199)
+- [Passes.cpp](../../compiler/torq/Conversions/LinalgToTorqHL/Passes.cpp#L149-L164)
 - [TorqHw.h](../../compiler/torq/Utils/TorqHw.h#L24-L26)
 - [tests/test_tile_and_fuse.py](../../tests/test_tile_and_fuse.py#L8-L112)
 - [add-int8_linalg_tiling.mlir](../../demo/mlir/add-int8_linalg_tiling.mlir#L10-L35)
