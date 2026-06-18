@@ -8,6 +8,7 @@ design.md
 developer_guide.md
 contributing.md
 debug_tips.md
+virtual_memory.md
 appendices.md
 testing.md
 ```
